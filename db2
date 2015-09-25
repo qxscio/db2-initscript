@@ -26,7 +26,7 @@ DB2NODES_CFG="0 ${HOSTNAME} 0"
 
 
 
-HOSTNAME=`hostname -f`
+HOSTNAME=$(hostname -f)
 
 RETVAL=0
 
@@ -36,12 +36,11 @@ find_homedir() {
 
 start() {
     LOGFILE=$(mktemp)
-    INSTHOME="$(find_homedir ${DB2USER})"
-    [[ -n ${DB2NODES_CFG} ]] && echo ${DB2NODES_CFG} > ${INSTHOME}/sqllib/db2nodes.cfg
+    INSTHOME="$(find_homedir ${DB2USER})/sqllib"
+    [[ -n ${DB2NODES_CFG} ]] && echo ${DB2NODES_CFG} > ${INSTHOME}/db2nodes.cfg
     echo -n $"Starting IBM DB2 instance [${DB2USER}]"
-        daemon --user=${DB2USER} "\
-        source ${INSTHOME}/sqllib/db2profile; \
-        db2start" >${LOGFILE} 2>&1 && success || failure
+    daemon --user=${DB2USER} "source ${INSTHOME}/db2profile && db2start" \
+        >${LOGFILE} 2>&1 && success || failure
     RETVAL=$?
     [[ $RETVAL -ne 0 ]] && cat ${LOGFILE}
     rm -f ${LOGFILE}
@@ -49,16 +48,15 @@ start() {
 }
 
 status() {
-    INSTHOME="$(find_homedir ${DB2USER})"
-    su - ${DB2USER} -c "\
-        source ${INSTHOME}/sqllib/db2profile; \
-        db2gcf -s" > /dev/null 2>&1
+    INSTHOME="$(find_homedir ${DB2USER})/sqllib"
+    su - ${DB2USER} -c \
+        "source ${INSTHOME}/db2profile && db2gcf -s" > /dev/null 2>&1
     RETVAL=$?
 }
 
 stop() {
     LOGFILE=$(mktemp)
-    INSTHOME="$(find_homedir ${DB2USER})"
+    INSTHOME="$(find_homedir ${DB2USER})/sqllib"
 
     echo -n $"Stopping IBM DB2 instance [${DB2USER}]"
 
@@ -70,14 +68,14 @@ stop() {
         RETVAL=0
         echo ""
     else
-        daemon --user=${DB2USER} "\
-            source ${INSTHOME}/sqllib/db2profile; \
-            db2stop force" >${LOGFILE} 2>&1 && success || failure
+        daemon --user=${DB2USER} \
+            "source ${INSTHOME}/db2profile && db2stop force" \
+            >${LOGFILE} 2>&1 && success || failure
         RETVAL=$?
         if [ $RETVAL -ne 0 ]; then
-        daemon --user=${DB2USER} "\
-            source ${INSTHOME}/sqllib/db2profile; \
-            db2_kill" >>${LOGFILE} 2>&1 && success || failure
+        daemon --user=${DB2USER} \
+            "source ${INSTHOME}/db2profile && db2_kill" \
+            >>${LOGFILE} 2>&1 && success || failure
         fi
         echo ""
     fi
